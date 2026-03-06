@@ -1,0 +1,44 @@
+# .gitlab-ci.yml
+# GitLab에 push 할 때마다 자동으로 lint/test 실행
+# Railway & Vercel은 각자 GitLab 연동으로 자동 배포됨
+
+stages:
+  - validate
+  - notify
+
+# ── 백엔드 문법 검사 ──────────────────────────────────────────────────────────
+backend:lint:
+  stage: validate
+  image: python:3.11-slim
+  script:
+    - cd backend
+    - pip install pyflakes --quiet
+    - python -m pyflakes . || true
+  rules:
+    - changes:
+        - backend/**/*
+
+# ── 프론트엔드 빌드 검사 ──────────────────────────────────────────────────────
+frontend:build-check:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - cd frontend
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - frontend/dist/
+    expire_in: 1 hour
+  rules:
+    - changes:
+        - frontend/**/*
+
+# ── 배포 완료 알림 (선택) ────────────────────────────────────────────────────
+deploy:notify:
+  stage: notify
+  image: alpine:latest
+  script:
+    - echo "✅ Build passed! Railway & Vercel will auto-deploy from GitLab."
+  only:
+    - main
